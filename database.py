@@ -1,4 +1,6 @@
-import sqlite3
+#datetime is used to calculate the week number for each match
+import sqlite3, datetime
+from datetime import datetime
 
 #creates connection to database with cursor to perform SQL code
 #variable made global to be accessed within other functions
@@ -31,7 +33,6 @@ def createTables():
     
     #matches table stores data entered when the match is created like date and location
     cursor.execute("""  CREATE TABLE IF NOT EXISTS Matches (
-                        matchID INT AUTO_INCREMENT PRIMARY KEY,
                         matchLocation CHAR,
                         matchDate DATE,
                         weekNum INT
@@ -67,9 +68,39 @@ def createUser(username, forename, surname, password, email, type):
                         (username, forename, surname, password, email, type))
     closeConnection()
 
-# def createMatch():
-#     openConnection()
-#     cursor.execute('''  INSERT INTO matches (date, venue, teamName, teamLocation, fixture, teamScore)
-#                         VALUES (?, ?, ?, ?, ?, ?)''')
+def calculateWeekNumber():
+    openConnection()
+    #obtaining current date
+    cursor.execute('''  SELECT DATE("NOW") DATE''')
+    currentDate = cursor.fetchone()[0]
+
+    #checking whether a match exists in the Matches table
+    #if it doesn't exist, it returns a week number of 1 and currentDate
+    cursor.execute('''  SELECT COUNT(*) FROM Matches''')
+    firstMatchCheck = cursor.fetchone()
+    if firstMatchCheck[0] == 0:
+        weekNum = 1
+        return currentDate, weekNum
+
+    #retrieves the date of the first match
+    cursor.execute('''  SELECT matchDate FROM Matches''')
+    firstMatchDate = cursor.fetchone()[0]
+    closeConnection()
+
+    #calculates the difference between the first match date and current date
+    firstMatchDate = datetime.strptime(firstMatchDate, '%Y-%m-%d').date()
+    currentDate = datetime.strptime(currentDate, '%Y-%m-%d').date()
+    dateDiff = abs(firstMatchDate - currentDate).days
+    weekNum = int(dateDiff / 7) + (dateDiff % 7 > 0) + 1
+    return currentDate, weekNum
+
+def createMatch(location):
+    currentDate, weekNum = calculateWeekNumber()
+    openConnection()
+    cursor.execute('''  INSERT INTO Matches (matchLocation, matchDate, weekNum)
+                        VALUES (?, ?, ?)''',
+                        (location, currentDate, weekNum)
+                        )
+    closeConnection()
 
 # print(rows)
